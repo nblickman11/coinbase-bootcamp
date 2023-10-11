@@ -7,19 +7,27 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const config: HardhatUserConfig = {
-  solidity: "0.8.17",
+  solidity: {
+    version: "0.8.17",
+    settings: {
+      // Other settings...
+    },
+  },
   namedAccounts: {
     deployer: 0
+  },
+  paths: {
+    deployments: 'deployments', // Change 'custom_deployments_path' to your desired path
   },
   networks: {
     base_goerli: {
       url: "https://goerli.base.org",
-      accounts: {
+      accounts:
         // Need a .env file with 
-            //MNENOMIC="<REPLACE WITH YOUR MNEMONIC>"
-            // ALCHEMY_GOERLI_KEY=<REPLACE WITH YOUR API KEY>
-        mnemonic: process.env.MNEMONIC ?? ""
-      }
+        [process.env.PRIVATE_KEY ?? ""],
+      gasPrice: 10000, // Keep this low, don't need my transaction to get included quickly.
+      // Upfront cost could be higher if I make this higher.  Doesn't have to do
+      // with execution cost/what gets refunded.
     }
   }
 };
