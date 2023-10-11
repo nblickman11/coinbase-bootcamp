@@ -98,7 +98,7 @@ describe("CollateralHubV3", function () {
             expect(userCheck).to.equal(true);
             //expect(Number(mintedAmount)).to.be.gt(0);
             expect(Number(usersAmounts)).to.be.gt(0);
-            console.log(`usersAmounts: ${usersAmounts}`);
+            console.log(`usersAmounts!: ${usersAmounts}`);
         });
     });
 });
