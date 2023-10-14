@@ -138,4 +138,8 @@ contract NUONControllerV3 {
     function getMintingFee(address _CHUB) public view returns (uint256) {
         return mintingFee[_CHUB];
     }
+
+    function isRedeemPaused() public view returns (bool) {
+        return redeemPaused;
+    }
 }
