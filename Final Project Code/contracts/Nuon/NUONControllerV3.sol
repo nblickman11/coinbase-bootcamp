@@ -20,6 +20,7 @@ contract NUONControllerV3 {
     mapping(address => int256) public maxOffPegPercentDownside;
     mapping(address => int256) public maxOffPegPercentUpside;
     mapping(address => uint256) public mintingFee;
+    mapping(address => uint256) public redeemFees;
 
     bool public mintPaused = false;
     bool public redeemPaused = false;
@@ -44,7 +45,8 @@ contract NUONControllerV3 {
         int256 _flatInterestRate,
         int256 _maxOffPegPercentUpside,
         int256 _maxOffPegPercentDownside,
-        uint256 _mintingFee
+        uint256 _mintingFee,
+        uint256 _redeemFees
     ) public {
         require(_CHUB != address(0), "Please provide a valid CHUB address");
         baseCollateralRatio[_CHUB] = _baseCollateralRatio;
@@ -55,6 +57,7 @@ contract NUONControllerV3 {
         maxOffPegPercentUpside[_CHUB] = _maxOffPegPercentUpside;
         maxOffPegPercentDownside[_CHUB] = _maxOffPegPercentDownside;
         mintingFee[_CHUB] = _mintingFee;
+        redeemFees[_CHUB] = _redeemFees;
     }
 
     function isMintPaused() public view returns (bool) {
@@ -101,20 +104,22 @@ contract NUONControllerV3 {
     function calculatePercentOffPeg() public view returns (int) {
         int256 NuonPrice = int(getNUONPrice());
         int256 targetPeg = int(getTruflationPeg());
+        // 120000000000000000 - 100000000000000000 = 20000000000000000
         int v1minv2 = NuonPrice - targetPeg;
+        // 20000000000000000 * 100000000000000000 / 100000000000000000 = 20000000000000000
         int v1v2var = (v1minv2 * 1e18) / NuonPrice;
-        //variance with 2 decimals
+        //20000000000000000 / 1e14 = 200
         int variance = v1v2var / 1e14;
         return (variance);
     }
 
     function getTruflationPeg() public view returns (uint256) {
-        return 2;
+        return 120000000000000000;
         //return ITruflation(TruflationOracle).getNuonTargetPeg();
     }
 
     function getNUONPrice() public view returns (uint256) {
-        return 3;
+        return 100000000000000000;
         // uint256 assetPrice;
         // if (NuonOracleAddress == address(0)) {
         //     assetPrice = 1e18;
@@ -141,5 +146,9 @@ contract NUONControllerV3 {
 
     function isRedeemPaused() public view returns (bool) {
         return redeemPaused;
+    }
+
+    function getRedeemFee(address _CHUB) public view returns (uint256) {
+        return redeemFees[_CHUB];
     }
 }

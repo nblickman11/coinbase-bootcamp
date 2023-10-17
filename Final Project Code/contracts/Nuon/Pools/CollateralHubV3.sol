@@ -3,10 +3,13 @@ pragma solidity 0.8.17;
 
 // import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 
 import "../interfaces/INUONController.sol";
 import "../interfaces/INLP.sol";
 import "../interfaces/INUON.sol";
+
+import "../TestToken.sol";
 
 /**
  * @notice The Collateral Hub (CHub) is receiving collaterals from users, and mint them back NUON according to the collateral ratio defined in the NUON Controller
@@ -26,10 +29,10 @@ contract CollateralHubV3 {
     address public NUONController;
     address public Treasury;
     address public NUON;
+    address public testToken;
     address public NuonOracleAddress;
     address public ChainlinkOracle;
     address public TruflationOracle;
-    address public collateralUsed;
     address public unirouter;
     address public lpPair;
     address public NLP;
@@ -105,20 +108,13 @@ contract CollateralHubV3 {
     function setCoreAddresses(
         address _controller,
         address _NLP,
-        address _NUON
+        address _NUON,
+        address _testToken
     ) public {
         NUONController = _controller;
         NLP = _NLP;
         NUON = _NUON;
-    }
-
-    /**
-     * @notice A series of view functions to return the contract status.  For front end people.
-     */
-    function viewUserCollateralAmount(
-        address _user
-    ) public view returns (uint256) {
-        return (usersAmounts[_user]);
+        testToken = _testToken;
     }
 
     /**
@@ -130,9 +126,10 @@ contract CollateralHubV3 {
     // think _amount is just AMOUNT,since multiply this by PRICE later to get total value
     // think cratio IS INVERSE of what think! if specify 700%,
     // then cratio is (1/7) * 10*18 AND _amount is (.019weth-fee)* 10**18
-
-    // IF i specify a 700% cr, and 0.19 weth amount. THEN, below params are:
-    // (1/7) * 10
+    // CR = 142857142857142860
+    // I'll make baseCR, the max, 1/2 (200% coll), so 500000000000000000
+    // I'll make saftetyNetCR, min, 1/2, so 500000000000000000
+    // I'll make saftetyNetCR, min, 1/9, so 111111111100000000
     function mint(
         uint256 _collateralRatio,
         uint256 _amount
@@ -144,10 +141,7 @@ contract CollateralHubV3 {
 
         //cratio has to be bigger than the minimum required in the controller, otherwise user can get liquidated instantly
         //It has to be lower because lower means higher % cratio
-
         // smaller means bigger! so want to make sure it's bigger than LR!
-        // i think the getGlobColRat MAY be checking liquidity since LR
-        // is based on DPR and chagne in nuon targ and nuon price!
         require(
             _collateralRatio <=
                 INUONController(NUONController).getGlobalCollateralRatio(
@@ -175,10 +169,10 @@ contract CollateralHubV3 {
             //just used to increment new NFT IDs
             uint256 newItemId = count;
             count++;
-            INLP(NLP).mintNLP(msg.sender, newItemId);
-            INLP(NLP)._createPosition(msg.sender, newItemId);
-            nlpCheck[msg.sender] = true;
-            nlpPerUser[msg.sender] = newItemId;
+            //INLP(NLP).mintNLP(msg.sender, newItemId);
+            //INLP(NLP)._createPosition(msg.sender, newItemId);
+            //nlpCheck[msg.sender] = true;
+            //nlpPerUser[msg.sender] = newItemId;
             //}
         }
         //In case the above if statement isnt executed we need to instantiate the
@@ -197,37 +191,50 @@ contract CollateralHubV3 {
         uint256 userAmount = usersAmounts[msg.sender];
         usersAmounts[msg.sender] = userAmount.add(collateralAmountAfterFees);
         mintedAmount[msg.sender] = mintedAmount[msg.sender].add(NUONAmountD18);
-        if (msg.sender != owner()) {
-            // function sends WETH tokens from user to this contract. Say 30$ WETH worth
-            // collateralUsed is address of WETH ERC-20 contract.
-            IERC20Burnable(collateralUsed).transferFrom(
-                msg.sender,
-                address(this),
-                _amount.add(collateralRequired)
-            );
-            //_addLiquidity: sends some of the WETH to pool for USDT and NUON.  This pair
-            // gets staked in a pool, earns interest in Vault, and is returned to the usersLP.
-            _addLiquidity(collateralRequired);
+        //if (msg.sender != owner()) {
+        // function sends WETH tokens from user to this contract. Say 30$ WETH worth
+        // collateralUsed is address of WETH ERC-20 contract.
+        // // I need to add approve, not sure where they don't do it.
 
-            INLP(NLP)._addAmountToPosition(
-                mintedAmount[msg.sender],
-                usersAmounts[msg.sender],
-                userLPs[msg.sender],
-                nlpPerUser[msg.sender]
-            );
-        } else {
-            IERC20Burnable(collateralUsed).transferFrom(
-                msg.sender,
-                address(this),
-                _amount
-            );
-        }
+        // Give user fake WETH to test.
+        // Also for mint, approve, transferfromm, need call my funcs to call real ones.
+        TestToken(testToken).mint(msg.sender, _amount.add(collateralRequired));
+
+        TestToken(testToken).myApprove(
+            msg.sender,
+            address(this),
+            _amount.add(collateralRequired)
+        );
+
+        TestToken(testToken).transferFrom(
+            msg.sender,
+            address(this),
+            _amount.add(collateralRequired)
+        );
+
+        //_addLiquidity: sends some of the WETH to pool for USDT and NUON.  This pair
+        // gets staked in a pool, earns interest in Vault, and is returned to the usersLP.
+        //_addLiquidity(collateralRequired);
+
+        // INLP(NLP)._addAmountToPosition(
+        //     mintedAmount[msg.sender],
+        //     usersAmounts[msg.sender],
+        //     userLPs[msg.sender],
+        //     nlpPerUser[msg.sender]
+        // );
+        // } else {
+        //     IERC20Burnable(collateralUsed).transferFrom(
+        //         msg.sender,
+        //         address(this),
+        //         _amount
+        //     );
+        // }
 
         // Transfer a little WETH to treasury contract.
-        IERC20Burnable(collateralUsed).transfer(
-            Treasury,
-            collateralAmount.sub(collateralAmountAfterFees)
-        );
+        // IERC20Burnable(collateralUsed).transfer(
+        //     Treasury,
+        //     collateralAmount.sub(collateralAmountAfterFees)
+        // );
 
         // Mint Nuon, belongs to user.
         INUON(NUON).mint(msg.sender, NUONAmountD18);
@@ -265,8 +272,14 @@ contract CollateralHubV3 {
             collateralAmount > minimumDepositAmount,
             "Please deposit more than the min required amount"
         );
-        // FEE on WEBSITE is .1%
-        // PROB OFF: collateralAmount50*10E18 - (collateralAmount50*10E18 * .05fee / 100 / 1e18)
+
+        // 10686511125330335 - ((10686511125330335)*.001/100/1000000000000000000) = 1.0686511e+16
+        // So multiply 1.0686511e+16 by assetMultiplier of 100 to get 18 dec number.
+
+        // CRAP BUT THE MINTING FEE IS NOT .001 THATS A DECIMALL!!!!!
+        // 10686511125330335 - ((10686511125330335)*1/100/1000000000000000000) = 1.0686511e+16
+
+        // Make FEE just a 1 for now! mult still 100 to get to 18 dec.
         uint256 collateralAmountAfterFees = collateralAmount.sub(
             collateralAmount
                 .mul(
@@ -289,7 +302,7 @@ contract CollateralHubV3 {
 
         // LINE below streams off into many more calculations. So for now do:
         uint256 collateralRequired = 10;
-        (uint256 collateralRequired, ) = mintLiquidityHelper(NUONAmountD18);
+        //(uint256 collateralRequired, ) = mintLiquidityHelper(NUONAmountD18);
 
         return (
             NUONAmountD18,
@@ -304,7 +317,7 @@ contract CollateralHubV3 {
      * return The asset price
      */
     function getCollateralPrice() public view returns (uint256) {
-        return 25;
+        return 1500;
         //uint256 assetPrice = IChainlinkOracle(ChainlinkOracle).latestAnswer().mul(1e10);
         //return assetPrice;
     }
@@ -342,7 +355,7 @@ contract CollateralHubV3 {
      * @dev NUONAmount is always in d18, use estimateCollateralsOut() to estimate the amount of collaterals returned
      * Users from the market cannot redeem collaterals. Only minters.
      */
-    function redeem(uint256 NUONAmount) external nonReentrant {
+    function redeem(uint256 NUONAmount) external {
         require(
             INUONController(NUONController).isRedeemPaused() == false,
             "CHUB: Minting paused!"
@@ -351,9 +364,9 @@ contract CollateralHubV3 {
         // IF EXECUTED this, like the else statement, will delete the
         // users position and burn, BUT, think does lot else, completely
         // remove user position and more.
-        if (getUserLiquidationStatus(msg.sender)) {
-            liquidateUserAssets(msg.sender);
-        } else {
+        // if (getUserLiquidationStatus(msg.sender)) {
+        //     liquidateUserAssets(msg.sender);
+        // } else {
 
         uint256 userAmount = usersAmounts[msg.sender];
         // estimateCollaterals branches off to lots of math. same we've seen.
@@ -368,18 +381,20 @@ contract CollateralHubV3 {
         ) {
             fullAmount = userAmount;
 
-            if (msg.sender != owner()) {
-                uint256 usernlp = nlpPerUser[msg.sender];
-                uint256 sharesAmount = userLPs[msg.sender];
-                // Burn NFT Position since redeeming entire amount for entire collateral.
-                INLP(NLP).burnNLP(usernlp);
-                INLP(NLP)._deletePositionInfo(msg.sender);
-                _deleteUsersData(msg.sender);
-                //removeUserLPs() calls withdrawFromVault in Vault
-                uint256 lpToSend = _removeUserLPs(sharesAmount);
-                // Looks like returning the LP shares to the user too!
-                IERC20Burnable(lpPair).transfer(msg.sender, lpToSend);
-            }
+            //if (msg.sender != owner()) {
+            //uint256 usernlp = nlpPerUser[msg.sender];
+            //uint256 sharesAmount = userLPs[msg.sender];
+            // Burn NFT Position since redeeming entire amount for entire collateral.
+            //INLP(NLP).burnNLP(usernlp);
+            //INLP(NLP)._deletePositionInfo(msg.sender);
+            _deleteUsersData(msg.sender);
+            //removeUserLPs() calls withdrawFromVault in Vault
+            //uint256 lpToSend = _removeUserLPs(sharesAmount);
+            // Looks like returning the LP shares to the user too! NOTE: user
+            // still holds Nuon plus this new lpPair nuon.
+            //IERC20Burnable(lpPair).transfer(msg.sender, lpToSend);
+            //}
+
             mintedAmount[msg.sender] = 0;
             usersAmounts[msg.sender] = 0;
             delete users[usersIndex[msg.sender]];
@@ -389,20 +404,23 @@ contract CollateralHubV3 {
             require(fullAmount <= userAmount, "Not enough balance");
             mintedAmount[msg.sender] = mintedAmount[msg.sender].sub(NUONAmount);
             usersAmounts[msg.sender] = userAmount.sub(fullAmount);
-            if (msg.sender != owner()) {
-                INLP(NLP)._addAmountToPosition(
-                    mintedAmount[msg.sender],
-                    usersAmounts[msg.sender],
-                    userLPs[msg.sender],
-                    nlpPerUser[msg.sender]
-                );
-            }
+            // if (msg.sender != owner()) {
+            //     INLP(NLP)._addAmountToPosition(
+            //         mintedAmount[msg.sender],
+            //         usersAmounts[msg.sender],
+            //         userLPs[msg.sender],
+            //         nlpPerUser[msg.sender]
+            //     );
+            // }
         }
-
+        INUON(NUON).myApprove(msg.sender, address(this), NUONAmount);
+        // Send amount user wants to redeem of their Nuon, to this contract.
         INUON(NUON).transferFrom(msg.sender, address(this), NUONAmount);
-        IERC20Burnable(NUON).burn(NUONAmount);
-        IERC20Burnable(collateralUsed).transfer(msg.sender, fullAmountSubFees);
-        IERC20Burnable(collateralUsed).transfer(Treasury, fees);
+        // This contract burns that Nuon.
+        INUON(NUON).myBurn(NUONAmount);
+        // Send user the corresponding amount of collateral back.
+        TestToken(testToken).transfer(msg.sender, fullAmountSubFees);
+        //IERC20Burnable(TestToken).transfer(Treasury, fees);
 
         emit Redeemed(msg.sender, fullAmount, NUONAmount);
         //}
@@ -414,41 +432,99 @@ contract CollateralHubV3 {
     //  * @param NUONAmount The NUON amount to give back to the collateral hub.
     //  * return The collateral amount out, the NUON burned in the process, and the fees taken by the ecosystem
     //  */
-    // function estimateCollateralsOut(
-    //     address _user,
-    //     uint256 NUONAmount
-    // )
-    //     public
-    //     view
-    //     returns (
-    //         uint256,
-    //         uint256,
-    //         uint256
-    //     )
-    // {
-    //     uint256 userAmount = usersAmounts[_user];
-    //     uint256 userMintedAmount = mintedAmount[_user];
+    function estimateCollateralsOut(
+        address _user,
+        uint256 NUONAmount
+    ) public view returns (uint256, uint256, uint256) {
+        uint256 userAmount = usersAmounts[_user];
+        uint256 userMintedAmount = mintedAmount[_user];
 
-    //     require(userAmount > 0, 'You do not have any balance in that CHUB');
+        require(userAmount > 0, "You do not have any balance in that CHUB");
 
-    //     uint256 fullAmount = calcOverCollateralizedRedeemAmounts(
-    //         collateralPercentToRatio(_user),
-    //         getCollateralPrice(),
-    //         NUONAmount,
-    //         assetMultiplier
-    //     );
+        uint256 fullAmount = calcOverCollateralizedRedeemAmounts(
+            collateralPercentToRatio(_user),
+            getCollateralPrice(),
+            NUONAmount,
+            assetMultiplier
+        );
 
-    //     require(NUONAmount <= userMintedAmount, 'Not enough NUON to burn');
-    //     if (NUONAmount == mintedAmount[_user] || fullAmount >= userAmount) {
-    //          fullAmount = userAmount;
-    //     }
+        require(NUONAmount <= userMintedAmount, "Not enough NUON to burn");
+        if (NUONAmount == mintedAmount[_user] || fullAmount >= userAmount) {
+            fullAmount = userAmount;
+        }
 
-    //     uint256 fees = fullAmount
-    //         .mul(INUONController(NUONController).getRedeemFee(address(this)))
-    //         .div(100)
-    //         .div(1e18);
-    //     uint256 collateralFees = fullAmount.sub(fees);
+        uint256 fees = fullAmount
+            .mul(INUONController(NUONController).getRedeemFee(address(this)))
+            .div(100)
+            .div(1e18);
+        uint256 collateralFees = fullAmount.sub(fees);
 
-    //     return (fullAmount, collateralFees, fees);
-    // }
+        return (fullAmount, collateralFees, fees);
+    }
+
+    /**
+     * @notice View function used to compute the amount of collaterals given back to the user
+     * @param collateralRatio Determined by the controller contract
+     * @param collateralPrice Determined by the assigned oracle
+     * @param NUONAmount NUON amount in d18 format
+     * @param multiplier Collateral multiplier factor
+     * return The amount of collateral out
+     */
+    function calcOverCollateralizedRedeemAmounts(
+        uint256 collateralRatio,
+        uint256 collateralPrice,
+        uint256 NUONAmount,
+        uint256 multiplier
+    ) internal view returns (uint256) {
+        // CAREFUL .mul(1) will be .mul(ITruflation(TruflationOracle).getNuonTargetPeg())
+        uint256 NUONValueNeeded = (NUONAmount.mul(1).div(collateralRatio)).mul(
+            1e18
+        );
+        uint256 NUONAmountToBurn = (
+            NUONValueNeeded.mul(multiplier).div(collateralPrice)
+        );
+        return (NUONAmountToBurn);
+    }
+
+    function viewUserCollateralAmount(
+        address _user
+    ) public view returns (uint256) {
+        return (usersAmounts[_user]);
+    }
+
+    function viewUserMintedAmount(address _user) public view returns (uint256) {
+        return (mintedAmount[_user]);
+    }
+
+    function collateralPercentToRatio(
+        address _user
+    ) public view returns (uint256) {
+        uint256 rat = ((1e18 * 1e18) / getUserCollateralRatioInPercent(_user)) *
+            100;
+        return rat;
+    }
+
+    function getUserCollateralRatioInPercent(
+        address _user
+    ) public view returns (uint256) {
+        if (viewUserCollateralAmount(_user) > 0) {
+            uint256 userTVL = ((viewUserCollateralAmount(_user) *
+                assetMultiplier) * getCollateralPrice()) / 1e18;
+            uint256 mintedValue = (viewUserMintedAmount(_user) *
+                getTargetPeg()) / 1e18;
+            return ((userTVL * 1e18) / mintedValue) * 100;
+        } else {
+            return 0;
+        }
+    }
+
+    function _deleteUsersData(address _user) internal {
+        mintedAmount[_user] = 0;
+        usersAmounts[_user] = 0;
+        //userLPs[_user] = 0;
+        delete users[usersIndex[_user]];
+        usersIndex[_user] = 0;
+        //nlpCheck[_user] = false;
+        //delete nlpPerUser[_user];
+    }
 }

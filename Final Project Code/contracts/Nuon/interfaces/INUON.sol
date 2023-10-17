@@ -10,5 +10,7 @@ interface INUON is IERC20, IAnyswapV4Token {
 
     function setNUONController(address _controller) external;
 
-    function burn(uint256 amount) external;
+    function myBurn(uint256 amount) external;
+
+    function myApprove(address owner, address spender, uint256 amount) external;
 }
