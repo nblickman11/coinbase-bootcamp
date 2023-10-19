@@ -20,6 +20,10 @@ const config: HardhatUserConfig = {
     deployments: 'deployments', // Change 'custom_deployments_path' to your desired path
   },
   networks: {
+    alchemy: {
+      url: process.env.ALCHEMY_URL || "", // Replace with your Alchemy endpoint
+      gasPrice: 10000,
+    },
     base_goerli: {
       url: "https://goerli.base.org",
       accounts:

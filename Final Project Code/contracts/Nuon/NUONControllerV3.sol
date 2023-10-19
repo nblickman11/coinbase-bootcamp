@@ -68,6 +68,8 @@ contract NUONControllerV3 {
         mintPaused = !mintPaused;
     }
 
+    // LR = target peg + CVB + DPR
+    // BUT THINK we are subtracting the CVB and the DPR cause doing reciprocals in the Hub.
     function getGlobalCollateralRatio(address _CHUB) public view returns (int) {
         int256 collateralRatio = baseCollateralRatio[_CHUB] -
             collateralVolatilityBuffer[_CHUB];
@@ -104,11 +106,11 @@ contract NUONControllerV3 {
     function calculatePercentOffPeg() public view returns (int) {
         int256 NuonPrice = int(getNUONPrice());
         int256 targetPeg = int(getTruflationPeg());
-        // 120000000000000000 - 100000000000000000 = 20000000000000000
+        // 100000000000000000 - 120000000000000000 = -20000000000000000
         int v1minv2 = NuonPrice - targetPeg;
-        // 20000000000000000 * 100000000000000000 / 100000000000000000 = 20000000000000000
+        // -20000000000000000 * 100000000000000000 / 100000000000000000 = -20000000000000000
         int v1v2var = (v1minv2 * 1e18) / NuonPrice;
-        //20000000000000000 / 1e14 = 200
+        //-20000000000000000 / 1e14 = -200
         int variance = v1v2var / 1e14;
         return (variance);
     }
@@ -119,7 +121,7 @@ contract NUONControllerV3 {
     }
 
     function getNUONPrice() public view returns (uint256) {
-        return 100000000000000000;
+        return 100000000000000000; //in USDT
         // uint256 assetPrice;
         // if (NuonOracleAddress == address(0)) {
         //     assetPrice = 1e18;

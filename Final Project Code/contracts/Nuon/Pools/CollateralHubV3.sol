@@ -129,7 +129,7 @@ contract CollateralHubV3 {
     // CR = 142857142857142860
     // I'll make baseCR, the max, 1/2 (200% coll), so 500000000000000000
     // I'll make saftetyNetCR, min, 1/2, so 500000000000000000
-    // I'll make saftetyNetCR, min, 1/9, so 111111111100000000
+    // I'll make _maxCRATIO, min, 1/9, so 111111111100000000
     function mint(
         uint256 _collateralRatio,
         uint256 _amount
@@ -162,13 +162,13 @@ contract CollateralHubV3 {
             users.push(msg.sender);
             // Make sure the owner of contract can't create positions I think.
             //if (msg.sender != owner()) {
-            require(
-                nlpCheck[msg.sender] == false,
-                "You already have a position"
-            );
+            // require(
+            //     nlpCheck[msg.sender] == false,
+            //     "You already have a position"
+            // );
             //just used to increment new NFT IDs
-            uint256 newItemId = count;
-            count++;
+            //uint256 newItemId = count;
+            //count++;
             //INLP(NLP).mintNLP(msg.sender, newItemId);
             //INLP(NLP)._createPosition(msg.sender, newItemId);
             //nlpCheck[msg.sender] = true;
@@ -273,13 +273,9 @@ contract CollateralHubV3 {
             "Please deposit more than the min required amount"
         );
 
-        // 10686511125330335 - ((10686511125330335)*.001/100/1000000000000000000) = 1.0686511e+16
-        // So multiply 1.0686511e+16 by assetMultiplier of 100 to get 18 dec number.
-
-        // CRAP BUT THE MINTING FEE IS NOT .001 THATS A DECIMALL!!!!!
+        // BUT THE MINTING FEE IS NOT .001 THATS A DECIMALL!!!!! Is 1 for now.
         // 10686511125330335 - ((10686511125330335)*1/100/1000000000000000000) = 1.0686511e+16
-
-        // Make FEE just a 1 for now! mult still 100 to get to 18 dec.
+        // So multiply 1.0686511e+16 by assetMultiplier of 100 to get 18 dec number.
         uint256 collateralAmountAfterFees = collateralAmount.sub(
             collateralAmount
                 .mul(
@@ -337,14 +333,14 @@ contract CollateralHubV3 {
         uint256 collateralValue = (collateralAmountD18.mul(collateralPrice))
             .div(1e18);
         uint256 NUONValueToMint = collateralValue.mul(collateralRatio).div(
-            1
-            //ITruflation(TruflationOracle).getNuonTargetPeg()
+            1000000000000000000 //ITruflation(TruflationOracle).getNuonTargetPeg()
         );
+
         return NUONValueToMint;
     }
 
     function getTargetPeg() public view returns (uint256) {
-        return 1;
+        return 1000000000000000000;
         //uint256 peg = ITruflation(TruflationOracle).getNuonTargetPeg();
         //return peg;
     }

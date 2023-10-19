@@ -1,4 +1,5 @@
 import { ethers } from "hardhat";
+const { ethers: myEthers } = require('ethers');
 
 async function main() {
 
@@ -28,8 +29,10 @@ async function main() {
   console.log(`CollateralHubV3 Initializer params are set`);
 
   // Call nuonControllerV3's setEcosystemParametersForCHUBS()
+  const parsedValue = myEthers.parseUnits("500000000000000000", 18);
+  const parsedValue2 = myEthers.parseUnits("111111111100000000", 18);
   const setEcosystemParametersForCHUBSTx = await nuonControllerV3.setEcosystemParametersForCHUBS(
-    collateralHubV3.target, 500000000000000000, 0, 500000000000000000, 111111111100000000, 1, -900, 900, 1, 1);
+    collateralHubV3.target, parsedValue, 0, parsedValue, parsedValue2, 1, -900, 900, 1, 1);
   await setEcosystemParametersForCHUBSTx.wait();
   console.log(`NuonControllerV3's ecosystem params have been set`);
 

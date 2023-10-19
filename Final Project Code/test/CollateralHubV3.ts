@@ -37,8 +37,9 @@ describe("CollateralHubV3", function () {
         // Call nuonControllerV3's setEcosystemParametersForCHUBS()
         const parsedValue = myEthers.parseUnits("500000000000000000", 18);
         const parsedValue2 = myEthers.parseUnits("111111111100000000", 18);
+        const mintFee = myEthers.parseUnits("000000000000000001", 18);
         const setEcosystemParametersForCHUBSTx = await nuonControllerV3Instance.setEcosystemParametersForCHUBS(
-            collateralHubV3Instance.target, parsedValue, 0, parsedValue, parsedValue2, 1, -900, 900, 1, 1);
+            collateralHubV3Instance.target, parsedValue, 0, parsedValue, parsedValue2, 1, -900, 900, mintFee, 1);
         await setEcosystemParametersForCHUBSTx.wait();
 
         // Call NLP-ETH's setCHUBForNLP()
@@ -60,10 +61,28 @@ describe("CollateralHubV3", function () {
         it("Should pass minting first 3 require statement's when not paused and within collateral ratio bounds",
             async function () {
                 const { collateralHubV3Instance, nuonControllerV3Instance } = await loadFixture(deployFixture);
-                const parsedValue = myEthers.parseUnits("142857142857142860", 18);
-                const parsedValue2 = myEthers.parseUnits("10686511125330335", 18);
+                // MINT(),  300 CR, .015 WETH-fee
+                const parsedValue = myEthers.parseUnits("333333333333333300", 18);
+                const parsedValue2 = myEthers.parseUnits("13514852823252754", 17);
                 const mintTx = await collateralHubV3Instance.mint(parsedValue, parsedValue2);
-                await mintTx.wait();
+                const receipt = await mintTx.wait();
+
+                const loga = receipt.logs[6];
+                //console.log("Logs of Mint():", loga);
+
+                const mintedEvent = loga["args"];
+
+                const sender = mintedEvent[0];
+                const mintedNuon = mintedEvent[1];
+                const peg = mintedEvent[2];
+                const collateral = mintedEvent[3];
+
+                console.log("\nSender:\n", sender, "\n");
+                // Correctly looks to be about 6.7 Nuon
+                console.log("Minted Nuon Amount:\n", mintedNuon.toString(), "\n"); // Convert to string to handle BigInt
+                console.log("Peg:", peg.toString(), "\n");
+                console.log("Collateral Amount\n:", collateral.toString(), "\n");
+
                 expect(mintTx).to.emit(collateralHubV3Instance, "First3RequiresPassed");
             });
 
@@ -72,14 +91,16 @@ describe("CollateralHubV3", function () {
             const toggleTx = await nuonControllerV3Instance.toggleMinting();
             await toggleTx.wait();
             const parsedValue = myEthers.parseUnits("142857142857142860", 18);
-            const parsedValue2 = myEthers.parseUnits("10686511125330335", 18);
+            const parsedValue2 = myEthers.parseUnits("10686511125330335", 17);
             await expect(collateralHubV3Instance.mint(parsedValue, parsedValue2)).to.be.revertedWith("CHUB: Minting paused!");
         });
     });
-    // it("Should fail minting when collateral ratio is out of bounds", async function () {
-    //     const { collateralHubV3Instance, nuonControllerV3Instance } = await loadFixture(deployFixture);
-    //     await expect(collateralHubV3Instance.mint(700, 1000)).to.be.revertedWith("Collateral Ratio out of bounds");
-    // });
+    it("Should fail minting when collateral ratio is out of bounds", async function () {
+        const { collateralHubV3Instance, nuonControllerV3Instance } = await loadFixture(deployFixture);
+        const parsedValue = myEthers.parseUnits("600000000000000000", 18);
+        const parsedValue2 = myEthers.parseUnits("10686511125330335", 17);
+        await expect(collateralHubV3Instance.mint(parsedValue, parsedValue2)).to.be.revertedWith("Collateral Ratio out of bounds");
+    });
 
     // it("Should fail minting when collateral ratio is too low", async function () {
     //     const { collateralHubV3Instance, nuonControllerV3Instance } = await loadFixture(deployFixture);
@@ -114,17 +135,28 @@ describe("CollateralHubV3", function () {
         it("Passing",
             async function () {
                 const { collateralHubV3Instance, nuonControllerV3Instance } = await loadFixture(deployFixture);
-                const parsedValue = myEthers.parseUnits("142857142857142860", 18);
-                const parsedValue2 = myEthers.parseUnits("10686511125330335", 18);
-                const mintTx = await collateralHubV3Instance.mint(parsedValue, parsedValue2); await mintTx.wait();
-                const redeemAmount = myEthers.parseUnits("1000000000000000000", 18);
+                // MINT(),  300 CR, .015 WETH-fee
+                const parsedValue = myEthers.parseUnits("333333333333333300", 18);
+                const parsedValue2 = myEthers.parseUnits("13514852823252754", 17);
+                const mintTx = await collateralHubV3Instance.mint(parsedValue, parsedValue2);
+                await mintTx.wait();
+
+                // Now, 6.6 nuon minted and weth reduced cause staked in contract
+
+                // Redeem 3 Nuon for $9.21 (.00589 WETH)  
+                const redeemAmount = myEthers.parseUnits("3000000000000000000", 19);
+                // ** NOTE: a literal value of 3000000000000000000 causes overflow in javascript
+                // sometimes.  So, parseUnits turns it into a BigNumber data type to prevent this.
+                //  Also, we use 19 digits here (represents 3 Nuon).  We use 19 decimals because we
+                // .. are interating with wei values on the backend.  But doesn't have to do with 
+                // ..representing wei, our number represents in 3 Nuon.
 
                 const redeemTx = await collateralHubV3Instance.redeem(redeemAmount);
                 const receipt = await redeemTx.wait();
 
 
                 const log = receipt.logs[5];
-                console.log("Logs:", log);
+                //console.log("Logs:", log);
 
                 // Assuming parsedLogs is the array you obtained from parsing the logs
                 //const redeemedEvent = log.find(x => x.name === 'Redeemed');
