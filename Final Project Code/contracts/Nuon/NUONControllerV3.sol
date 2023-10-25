@@ -24,6 +24,8 @@ contract NUONControllerV3 {
 
     bool public mintPaused = false;
     bool public redeemPaused = false;
+    uint256 public truflationPegPrice = 100000000000000000;
+    uint256 public nuonTokenPrice = 120000000000000000;
 
     /**
      * Constructor.
@@ -114,14 +116,21 @@ contract NUONControllerV3 {
         int variance = v1v2var / 1e14;
         return (variance);
     }
+    
+    function setTruflationPegPrice(uint256 _truflationPegPrice) public {
+        truflationPegPrice = _truflationPegPrice;
+    }
+    function setNuonTokenPrice(uint256 _nuonTokenPrice) public {
+        nuonTokenPrice = _nuonTokenPrice;
+    }
 
     function getTruflationPeg() public view returns (uint256) {
-        return 120000000000000000;
+        return truflationPegPrice;
         //return ITruflation(TruflationOracle).getNuonTargetPeg();
     }
 
     function getNUONPrice() public view returns (uint256) {
-        return 100000000000000000; //in USDT
+        return nuonTokenPrice; //in USDT
         // uint256 assetPrice;
         // if (NuonOracleAddress == address(0)) {
         //     assetPrice = 1e18;

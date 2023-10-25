@@ -255,7 +255,7 @@ contract CollateralHubV3 {
     function estimateMintedNUONAmount(
         uint256 collateralAmount,
         uint256 _collateralRatio
-    ) public view returns (uint256, uint256, uint256, uint256) {
+    ) public returns (uint256, uint256, uint256, uint256) {
         require(
             _collateralRatio <=
                 INUONController(NUONController).getGlobalCollateralRatio(
@@ -313,7 +313,7 @@ contract CollateralHubV3 {
      * return The asset price
      */
     function getCollateralPrice() public view returns (uint256) {
-        return 1500;
+        return 1700;
         //uint256 assetPrice = IChainlinkOracle(ChainlinkOracle).latestAnswer().mul(1e10);
         //return assetPrice;
     }
@@ -329,18 +329,19 @@ contract CollateralHubV3 {
         uint256 collateralRatio,
         uint256 collateralPrice,
         uint256 collateralAmountD18
-    ) internal view returns (uint256) {
+    ) internal returns (uint256) {
         uint256 collateralValue = (collateralAmountD18.mul(collateralPrice))
             .div(1e18);
         uint256 NUONValueToMint = collateralValue.mul(collateralRatio).div(
-            1000000000000000000 //ITruflation(TruflationOracle).getNuonTargetPeg()
+            INUONController(NUONController).getTruflationPeg()
         );
-
         return NUONValueToMint;
+        //1000000000000000000 //ITruflation(TruflationOracle).getNuonTargetPeg()
     }
 
-    function getTargetPeg() public view returns (uint256) {
-        return 1000000000000000000;
+    function getTargetPeg() public returns (uint256) {
+        //return 1000000000000000000;
+        return INUONController(NUONController).getTruflationPeg();
         //uint256 peg = ITruflation(TruflationOracle).getNuonTargetPeg();
         //return peg;
     }
@@ -431,7 +432,7 @@ contract CollateralHubV3 {
     function estimateCollateralsOut(
         address _user,
         uint256 NUONAmount
-    ) public view returns (uint256, uint256, uint256) {
+    ) public returns (uint256, uint256, uint256) {
         uint256 userAmount = usersAmounts[_user];
         uint256 userMintedAmount = mintedAmount[_user];
 
@@ -471,9 +472,9 @@ contract CollateralHubV3 {
         uint256 collateralPrice,
         uint256 NUONAmount,
         uint256 multiplier
-    ) internal view returns (uint256) {
+    ) internal returns (uint256) {
         // CAREFUL .mul(1) will be .mul(ITruflation(TruflationOracle).getNuonTargetPeg())
-        uint256 NUONValueNeeded = (NUONAmount.mul(1).div(collateralRatio)).mul(
+        uint256 NUONValueNeeded = (NUONAmount.mul(INUONController(NUONController).getTruflationPeg()).div(collateralRatio)).mul(
             1e18
         );
         uint256 NUONAmountToBurn = (
@@ -494,7 +495,7 @@ contract CollateralHubV3 {
 
     function collateralPercentToRatio(
         address _user
-    ) public view returns (uint256) {
+    ) public returns (uint256) {
         uint256 rat = ((1e18 * 1e18) / getUserCollateralRatioInPercent(_user)) *
             100;
         return rat;
@@ -502,7 +503,7 @@ contract CollateralHubV3 {
 
     function getUserCollateralRatioInPercent(
         address _user
-    ) public view returns (uint256) {
+    ) public returns (uint256) {
         if (viewUserCollateralAmount(_user) > 0) {
             uint256 userTVL = ((viewUserCollateralAmount(_user) *
                 assetMultiplier) * getCollateralPrice()) / 1e18;

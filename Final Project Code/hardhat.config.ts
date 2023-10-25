@@ -3,6 +3,7 @@ import "@nomicfoundation/hardhat-toolbox";
 import "hardhat-deploy";
 import dotenv from 'dotenv';
 
+
 // Protect keys and info.  
 dotenv.config();
 
@@ -22,6 +23,12 @@ const config: HardhatUserConfig = {
   networks: {
     alchemy: {
       url: process.env.ALCHEMY_URL || "", // Replace with your Alchemy endpoint
+      accounts: [process.env.PRIVATE_KEY ?? ""],
+      gasPrice: 10000,
+    },
+    infura: {
+      url: process.env.INFURA_SEPOLIA_URL || "", // Your Infura Sepolia endpoint
+      accounts: [process.env.PRIVATE_KEY ?? ""],
       gasPrice: 10000,
     },
     base_goerli: {

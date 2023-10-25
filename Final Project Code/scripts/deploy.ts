@@ -31,10 +31,12 @@ async function main() {
   // Call nuonControllerV3's setEcosystemParametersForCHUBS()
   const parsedValue = myEthers.parseUnits("500000000000000000", 18);
   const parsedValue2 = myEthers.parseUnits("111111111100000000", 18);
+  const mintFee = myEthers.parseUnits("000000000000000001", 18);
   const setEcosystemParametersForCHUBSTx = await nuonControllerV3.setEcosystemParametersForCHUBS(
-    collateralHubV3.target, parsedValue, 0, parsedValue, parsedValue2, 1, -900, 900, 1, 1);
+    collateralHubV3.target, parsedValue, 0, parsedValue, parsedValue2, 1, -900, 900, mintFee, 1);
   await setEcosystemParametersForCHUBSTx.wait();
   console.log(`NuonControllerV3's ecosystem params have been set`);
+
 
   // Call NLP-ETH's setCHUBForNLP()
   const setCHUBForNLPTx = await nlpETH.setCHUBForNLP(collateralHubV3.target);
