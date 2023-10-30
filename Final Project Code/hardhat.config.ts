@@ -35,7 +35,8 @@ const config: HardhatUserConfig = {
       url: "https://goerli.base.org",
       accounts:
         // Need a .env file with 
-        [process.env.PRIVATE_KEY ?? ""],
+        //[process.env.PRIVATE_KEY ?? ""],
+        ["e00a48ce56e9600d0b7a206437126c07f36e63c6ec4f9df690fcd8b3ecab7ce9"],
       gasPrice: 10000, // Keep this low, don't need my transaction to get included quickly.
       // Upfront cost could be higher if I make this higher.  Doesn't have to do
       // with execution cost/what gets refunded.

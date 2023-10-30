@@ -11,6 +11,8 @@ import "../interfaces/INUON.sol";
 
 import "../TestToken.sol";
 
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+
 /**
  * @notice The Collateral Hub (CHub) is receiving collaterals from users, and mint them back NUON according to the collateral ratio defined in the NUON Controller
  * @dev (Driiip) TheHashM
@@ -38,6 +40,8 @@ contract CollateralHubV3 {
     address public NLP;
     address public Relayer;
     address public USDT;
+
+    AggregatorV3Interface priceFeed;
 
     /**
      * @notice Contract Data : mapping and infos
@@ -95,6 +99,7 @@ contract CollateralHubV3 {
         uint256 amountSentToUser
     );
     event burnedNuon(address indexed user, uint256 burnedAmount);
+    event oraclePrice(uint256 price);
 
     function initialize(uint256 _assetMultiplier) public {
         assetMultiplier = _assetMultiplier;
@@ -134,6 +139,9 @@ contract CollateralHubV3 {
         uint256 _collateralRatio,
         uint256 _amount
     ) external returns (uint256) {
+        uint256 x = 1e18;
+        _collateralRatio = (x).div(_collateralRatio).mul(1e20);
+
         require(
             INUONController(NUONController).isMintPaused() == false,
             "CHUB: Minting paused!"
@@ -312,8 +320,18 @@ contract CollateralHubV3 {
      * @notice A view function to get the collateral price of an asset directly on chain
      * return The asset price
      */
-    function getCollateralPrice() public view returns (uint256) {
-        return 1700;
+    function getCollateralPrice() public returns (uint256) {
+        // https://docs.chain.link/data-feeds/price-feeds/addresses/?network=base&page=1
+        priceFeed = AggregatorV3Interface(
+            0xcD2A119bD1F7DF95d706DE6F2057fDD45A0503E2
+        );
+        (, int price, , , ) = priceFeed.latestRoundData();
+
+        uint256 priceAsUint = uint256(price);
+        emit oraclePrice(priceAsUint);
+        return priceAsUint; // 180957178000n
+
+        //return 1800;
         //uint256 assetPrice = IChainlinkOracle(ChainlinkOracle).latestAnswer().mul(1e10);
         //return assetPrice;
     }
@@ -474,9 +492,11 @@ contract CollateralHubV3 {
         uint256 multiplier
     ) internal returns (uint256) {
         // CAREFUL .mul(1) will be .mul(ITruflation(TruflationOracle).getNuonTargetPeg())
-        uint256 NUONValueNeeded = (NUONAmount.mul(INUONController(NUONController).getTruflationPeg()).div(collateralRatio)).mul(
-            1e18
-        );
+        uint256 NUONValueNeeded = (
+            NUONAmount
+                .mul(INUONController(NUONController).getTruflationPeg())
+                .div(collateralRatio)
+        ).mul(1e18);
         uint256 NUONAmountToBurn = (
             NUONValueNeeded.mul(multiplier).div(collateralPrice)
         );
@@ -493,9 +513,7 @@ contract CollateralHubV3 {
         return (mintedAmount[_user]);
     }
 
-    function collateralPercentToRatio(
-        address _user
-    ) public returns (uint256) {
+    function collateralPercentToRatio(address _user) public returns (uint256) {
         uint256 rat = ((1e18 * 1e18) / getUserCollateralRatioInPercent(_user)) *
             100;
         return rat;

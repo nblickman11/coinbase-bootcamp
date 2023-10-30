@@ -103,12 +103,18 @@ describe("CollateralHubV3", function () {
     it("Minting Peg Below Price", async function () {
         //const { collateralHubV3Instance, nuonControllerV3Instance } = await loadFixture(deployFixture);
         // MINT(),  300 CR, .015 WETH-fee
-        const parsedValue = myEthers.parseUnits("333333333333333300", 18);
+
+        //const parsedValue = myEthers.parseUnits("333333333333333300", 18);
+        const parsedValue = myEthers.parseUnits("300", 0);
+
         const parsedValue2 = myEthers.parseUnits("13514852823252754", 17);
         const mintTx = await collateralHubV3Instance.mint(parsedValue, parsedValue2);
         const receipt = await mintTx.wait();
 
-        const loga = receipt.logs[6];
+        console.log(receipt);
+        console.log(receipt.logs);
+
+        const loga = receipt.logs[7];
         const mintedEvent = loga["args"];
         const sender = mintedEvent[0];
         const mintedNuon = mintedEvent[1];
@@ -123,7 +129,7 @@ describe("CollateralHubV3", function () {
 
         expect(mintTx).to.emit(collateralHubV3Instance, "First3RequiresPassed");
 
-        const maValue = await collateralHubV3Instance.mintedAmount("0x209740dDC77fC1FD983a53354A7710eC0a34f055");
+        const maValue = await collateralHubV3Instance.mintedAmount("0x27AAAa73C3CA19F0206b86D7a05EB7c13E5C91bf");
         console.log("Minted Amount for deployer:", maValue);
 
     });
@@ -142,12 +148,13 @@ describe("CollateralHubV3", function () {
         await tx2.wait();
 
         // Mint after price Change
-        const parsedValueX = myEthers.parseUnits("333333333333333300", 18);
+        //const parsedValueX = myEthers.parseUnits("333333333333333300", 18);
+        const parsedValueX = myEthers.parseUnits("300", 0);
         const parsedValueY = myEthers.parseUnits("13514852823252754", 17);
         const mintTx2 = await collateralHubV3Instance.mint(parsedValueX, parsedValueY);
         const receipt = await mintTx2.wait();
 
-        const mCValue = await collateralHubV3Instance.mintedAmount("0x209740dDC77fC1FD983a53354A7710eC0a34f055");
+        const mCValue = await collateralHubV3Instance.mintedAmount("0x27AAAa73C3CA19F0206b86D7a05EB7c13E5C91bf");
         console.log("Minted Amount After Peg Change and another Mint:", mCValue);
 
         const loga = receipt.logs[6];
