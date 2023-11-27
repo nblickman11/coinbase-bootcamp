@@ -10,12 +10,6 @@ contract BasicMath {
         */
         uint sum; 
         bool error;
-        /*
-            If there is an overflow, return an error of true.
-            Checking our value with "unchecked" won't detect overflow. Also, adding values
-            that overflow will cause a revert, but we want to return an error value.  Hence,
-            we check for overflow through the subtraction below.
-        */
         if ((type(uint).max - _a) < _b) {
             error = true;
         }
